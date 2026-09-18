@@ -1,0 +1,35 @@
+[project]
+name = "radler"
+version = "0.1.0"
+description = "Go binaries in Python wheels."
+readme = "README.md"
+authors = [
+    { name = "William Woodruff", email = "william@yossarian.net" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "packaging>=26.0",
+]
+
+[project.scripts]
+radler = "radler._cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "ty",
+]
+
+[tool.uv.workspace]
+members = []
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "PT"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
