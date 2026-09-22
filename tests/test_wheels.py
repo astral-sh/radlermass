@@ -41,16 +41,12 @@ def wheel(request, wheels):
 
 
 def test_builds_all_platforms(wheels):
-    """Build eight wheels when no platforms are specified."""
+    """Build all eight targets by default."""
     assert len(wheels) == 8
 
 
 def test_wheel_layout(wheel):
-    """Put the native executable in .data/scripts with executable permissions.
-
-    The wheel filename uses a normalized name and version with py3-none tags.
-    Only the executable and the three required dist-info files are included.
-    """
+    """Store the executable in .data/scripts with mode 0755."""
     name, version, _, tags = parse_wheel_filename(Path(wheel.filename).name)
     assert name == "radler-test-cli"
     assert str(version) == "1.2.3rc1"
@@ -74,11 +70,7 @@ def test_wheel_layout(wheel):
 
 
 def test_wheel_metadata(wheel, go_module):
-    """Preserve supplied metadata and README contents in each wheel.
-
-    Omit Requires-Python and Requires-Dist, and match the WHEEL tag to the
-    filename.
-    """
+    """Preserve supplied metadata, including Unicode and README contents."""
     metadata, unparsed = parse_email(wheel.read(f"{STEM}.dist-info/METADATA"))
     assert not unparsed
     assert metadata == {
@@ -109,10 +101,7 @@ def test_wheel_metadata(wheel, go_module):
 
 @pytest.mark.parametrize("readme", ["README.md", "# Inline README\n\nGrüße!\n"])
 def test_inline_readme(tmp_path, go_module, readme):
-    """Embed README strings verbatim, including strings naming an existing file.
-
-    Omit the Summary header when no description is supplied.
-    """
+    """Treat README strings as content, even when they name an existing file."""
     [path] = build_wheels(
         go_module,
         package_path="cmd/hello",
@@ -128,10 +117,7 @@ def test_inline_readme(tmp_path, go_module, readme):
 
 
 def test_wheel_record(wheel):
-    """Record every wheel member with its SHA-256 digest and byte length.
-
-    RECORD lists itself with an empty hash and size.
-    """
+    """Record member hashes and sizes, leaving RECORD's own fields empty."""
     record = f"{STEM}.dist-info/RECORD"
     rows = list(csv.reader(io.StringIO(wheel.read(record).decode("utf-8"))))
     assert len(rows) == len(wheel.namelist())
@@ -180,10 +166,7 @@ def installed_command(request, tmp_path_factory, native_wheel):
 
 
 def test_installed_command(installed_command, native_wheel):
-    """Install the native executable unchanged with both pip and uv.
-
-    Run it without Python or Go on PATH and check the embedded linker values.
-    """
+    """Install the binary unchanged and run it with an empty PATH."""
     with zipfile.ZipFile(native_wheel) as wheel:
         member = f"{STEM}.data/scripts/{installed_command.name}"
         assert installed_command.read_bytes() == wheel.read(member)
@@ -199,11 +182,7 @@ def test_installed_command(installed_command, native_wheel):
 
 
 def test_root_package_is_reproducible(tmp_path, monkeypatch):
-    """Build identical root-package wheels with a fixed SOURCE_DATE_EPOCH.
-
-    The archive uses that timestamp and the module directory's name for the
-    installed command.
-    """
+    """Honor SOURCE_DATE_EPOCH and produce identical wheels on repeated builds."""
     module = tmp_path / "root-command"
     module.mkdir()
     (module / "go.mod").write_text("module example.com/root\n\ngo 1.20\n")
@@ -231,12 +210,7 @@ def test_library_package_fails(tmp_path, go_module):
 
 
 def test_failed_target_does_not_publish_partial_set(tmp_path, go_module):
-    """Keep existing wheels unchanged when a later target fails.
-
-    The command has only an amd64 source file, so the arm64 build fails.
-    The existing amd64 wheel must remain intact, and the staging directory
-    must be removed.
-    """
+    """An amd64-only command must fail on arm64 without replacing existing wheels."""
     sentinel = tmp_path / "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
     sentinel.write_bytes(b"previous build")
 
@@ -264,11 +238,7 @@ def test_failed_target_does_not_publish_partial_set(tmp_path, go_module):
     ],
 )
 def test_compile_environment(tmp_path, go_module, monkeypatch, target, goos, goarch):
-    """Override inherited Go settings to build for the selected target.
-
-    Read the binary's build information to check the target, disabled cgo,
-    and baseline CPU features.
-    """
+    """Override inherited target, cgo, and CPU feature settings."""
     monkeypatch.setenv("GOOS", "plan9")
     monkeypatch.setenv("GOARCH", "386")
     monkeypatch.setenv("GOAMD64", "v4")
@@ -303,10 +273,7 @@ def test_compile_environment(tmp_path, go_module, monkeypatch, target, goos, goa
 
 @pytest.mark.parametrize("platform", ["linux-amd64", "darwin-arm64"])
 def test_compile_timeout(tmp_path, go_module, platform):
-    """Report a real Go subprocess timeout and remove staged output.
-
-    Use a near-zero limit so even a cached build or version query times out.
-    """
+    """Raise RuntimeError on timeout and remove staged output."""
     with pytest.raises(RuntimeError, match="exceeded 1e-09 seconds") as error:
         build_wheels(
             go_module,

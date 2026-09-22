@@ -66,20 +66,18 @@ def build_wheels(
     set_version_var: str | None = None,
     build_timeout: float = 300,
 ) -> list[Path]:
-    """Build wheels for the Go main package in ``go_dir``.
+    """Build wheels from ``go_dir`` and return their absolute paths.
 
-    The module root is built by default; ``package_path`` selects a subdirectory.
-    ``readme`` accepts Markdown text or a Path to a UTF-8 file. Relative paths
-    resolve against the module; relative ``output_dir`` paths resolve against
-    the current working directory. The package summary is omitted unless
-    ``description`` is supplied.
+    ``package_path`` selects the main package, defaulting to the module root.
+    ``readme`` is Markdown text or a Path to a UTF-8 file. Relative README paths
+    use ``go_dir``; relative ``output_dir`` paths use the working directory.
+    ``description=None`` omits the package summary.
 
-    Returns a list of absolute wheel paths. Raises ValueError for invalid inputs,
-    RuntimeError for Go command failures (including timeouts), and OSError for I/O
-    or process errors.
+    Raises ValueError for invalid inputs, RuntimeError for Go failures or
+    timeouts, and OSError for I/O or process errors.
 
-    All selected targets must build before any output wheels are replaced.
-    Replacement is atomic per wheel, not across the set.
+    Existing wheels are replaced only after all builds succeed. Each replacement
+    is atomic.
     """
     module, package = _resolve_package(go_dir, package_path)
     if name is None:
