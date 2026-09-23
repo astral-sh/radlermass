@@ -1,0 +1,14 @@
+radlermass includes code derived from go-to-wheel.
+
+Source: https://github.com/simonw/go-to-wheel
+Author: Simon Willison
+License: Apache License, Version 2.0 (see LICENSE-APACHE)
+
+Astral Software Inc. modified the Go compilation, wheel generation, metadata,
+platform mapping, and command-line code for radlermass. Changes include splitting
+the code into modules, installing native executables directly, and adding input
+validation and reproducible wheel generation.
+
+The code derived from go-to-wheel remains subject to the Apache License,
+Version 2.0. Original radlermass code and modifications are available under
+MIT OR Apache-2.0 (see LICENSE-MIT and LICENSE-APACHE).

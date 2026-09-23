@@ -1,0 +1,97 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (X.Y.Z, without a leading v)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    name: Prepare release
+    if: github.repository == 'astral-sh/radlermass' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # Push the release branch.
+      pull-requests: write # Open the version bump PR.
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.18"
+          enable-cache: false
+
+      - name: Bump version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Expected a version in X.Y.Z form, without a leading v or zero padding"
+            exit 1
+          fi
+          if git rev-parse --verify --quiet "refs/tags/v${VERSION}" >/dev/null; then
+            echo "::error::Tag v${VERSION} already exists"
+            exit 1
+          fi
+
+          current_version=$(uv version --short)
+          if ! printf '%s\n' "$current_version" "$VERSION" | sort --version-sort --check=silent --unique; then
+            echo "::error::Version ${VERSION} must be greater than ${current_version}"
+            exit 1
+          fi
+
+          uv version --no-sync "$VERSION"
+          uv lock --check
+
+      - name: Create or update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+
+          branch="release/${VERSION}"
+          git switch -c "$branch"
+          git add pyproject.toml uv.lock
+          git commit -m "Release ${VERSION}"
+          git push --force-with-lease origin "HEAD:refs/heads/${branch}"
+
+          pull_request="$(
+            gh pr list \
+              --base main \
+              --head "$branch" \
+              --state open \
+              --json url \
+              --jq '.[0].url'
+          )"
+          if [[ -z "$pull_request" ]]; then
+            pull_request="$(
+              gh pr create \
+                --base main \
+                --head "$branch" \
+                --title "Release ${VERSION}" \
+                --body "Bumps the project and lockfile versions to ${VERSION}. After merging, run the Release workflow on main with version ${VERSION}."
+            )"
+          fi
+          printf '%s\n' "$pull_request"
+          printf 'Release PR: %s\n' "$pull_request" >> "$GITHUB_STEP_SUMMARY"

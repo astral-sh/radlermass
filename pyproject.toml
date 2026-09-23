@@ -3,8 +3,9 @@ name = "radlermass"
 version = "0.1.0"
 description = "Go binaries in Python wheels."
 readme = "README.md"
-license = "MIT OR Apache-2.0"
-license-files = ["LICENSE-APACHE", "LICENSE-MIT"]
+# Includes Apache-2.0 code derived from go-to-wheel; see NOTICE.
+license = "(MIT OR Apache-2.0) AND Apache-2.0"
+license-files = ["LICENSE-APACHE", "LICENSE-MIT", "NOTICE"]
 authors = [
     { name = "William Woodruff", email = "william@yossarian.net" }
 ]
