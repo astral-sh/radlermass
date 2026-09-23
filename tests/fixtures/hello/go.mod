@@ -1,3 +1,3 @@
-module example.com/radler-test
+module example.com/radlermass-test
 
 go 1.20

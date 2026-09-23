@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from functools import cached_property
 from pathlib import Path
 
-from radler._platforms import Target
+from radlermass._platforms import Target
 
 
 class Go:

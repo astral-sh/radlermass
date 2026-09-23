@@ -1,6 +1,6 @@
 import pytest
 
-from radler._platforms import macos_tag
+from radlermass._platforms import macos_tag
 
 
 @pytest.mark.parametrize(

@@ -64,7 +64,7 @@ wheels = [
 ]
 
 [[package]]
-name = "radler"
+name = "radlermass"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -1,17 +1,17 @@
-"""Command-line interface for radler."""
+"""Command-line interface for radlermass."""
 
 import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from radler._build import build_wheels
-from radler._platforms import TARGETS
+from radlermass._build import build_wheels
+from radlermass._platforms import TARGETS
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="radler", description="Compile Go commands into Python wheels."
+        prog="radlermass", description="Compile Go commands into Python wheels."
     )
 
     parser.add_argument("go_dir", help="Go module directory containing go.mod")
@@ -69,10 +69,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         wheels = build_wheels(**vars(args))
     except (OSError, ValueError, RuntimeError) as error:
-        print(f"radler: {error}", file=sys.stderr)
+        print(f"radlermass: {error}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
-        print("radler: interrupted", file=sys.stderr)
+        print("radlermass: interrupted", file=sys.stderr)
         return 130
 
     print(f"Built {len(wheels)} wheel(s):")

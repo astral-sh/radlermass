@@ -13,7 +13,7 @@ from typing import BinaryIO
 
 from packaging.tags import Tag
 
-from radler._metadata import Metadata
+from radlermass._metadata import Metadata
 
 
 def wheel_timestamp() -> tuple[int, int, int, int, int, int]:
@@ -74,7 +74,7 @@ def write_wheel(
 
         wheel_metadata = (
             "Wheel-Version: 1.0\n"
-            "Generator: radler\n"
+            "Generator: radlermass\n"
             "Root-Is-Purelib: false\n"
             f"Tag: {wheel_tag}\n"
         )

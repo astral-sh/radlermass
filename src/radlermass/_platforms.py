@@ -65,7 +65,7 @@ def macos_tag(go_version: str, arch: str) -> str:
     except InvalidVersion, KeyError:
         raise ValueError(
             f"Unknown macOS minimum for Go version {go_version!r}; "
-            "update radler's Go version map"
+            "update radlermass's Go version map"
         ) from None
 
     if arch == "arm64":

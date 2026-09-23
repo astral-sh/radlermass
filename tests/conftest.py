@@ -7,7 +7,7 @@ import pytest
 from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
 
-from radler import build_wheels
+from radlermass import build_wheels
 
 
 @pytest.fixture(scope="session")
@@ -34,9 +34,9 @@ def go_environment(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
 def wheels(tmp_path_factory, go_environment, go_module) -> list[Path]:
     return build_wheels(
         go_module,
-        name="Radler_Test--CLI",
+        name="Radlermass_Test--CLI",
         version="v1.2.3-rc.1",
-        entry_point="hello-radler",
+        entry_point="hello-radlermass",
         package_path="cmd/hello",
         output_dir=tmp_path_factory.mktemp("wheels"),
         set_version_var="main.version",

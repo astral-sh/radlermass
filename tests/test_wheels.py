@@ -15,11 +15,11 @@ import pytest
 from packaging.metadata import parse_email
 from packaging.utils import parse_wheel_filename
 
-from radler import build_wheels
+from radlermass import build_wheels
 
 pytestmark = pytest.mark.usefixtures("go_environment")
 
-STEM = "radler_test_cli-1.2.3rc1"
+STEM = "radlermass_test_cli-1.2.3rc1"
 
 
 @pytest.fixture(
@@ -48,13 +48,13 @@ def test_builds_all_platforms(wheels):
 def test_wheel_layout(wheel):
     """Store the executable in .data/scripts with mode 0755."""
     name, version, _, tags = parse_wheel_filename(Path(wheel.filename).name)
-    assert name == "radler-test-cli"
+    assert name == "radlermass-test-cli"
     assert str(version) == "1.2.3rc1"
     [tag] = tags
     assert tag.interpreter == "py3"
     assert tag.abi == "none"
 
-    script = f"{STEM}.data/scripts/hello-radler"
+    script = f"{STEM}.data/scripts/hello-radlermass"
     if tag.platform.startswith("win_"):
         script += ".exe"
     assert set(wheel.namelist()) == {
@@ -75,7 +75,7 @@ def test_wheel_metadata(wheel, go_module):
     assert not unparsed
     assert metadata == {
         "metadata_version": "2.1",
-        "name": "Radler_Test--CLI",
+        "name": "Radlermass_Test--CLI",
         "version": "1.2.3rc1",
         "summary": "A compiled command — Grüße!",
         "author": "Zoë Example",
@@ -93,7 +93,7 @@ def test_wheel_metadata(wheel, go_module):
     )
     assert dict(wheel_metadata.items()) == {
         "Wheel-Version": "1.0",
-        "Generator": "radler",
+        "Generator": "radlermass",
         "Root-Is-Purelib": "false",
         "Tag": str(tag),
     }
@@ -139,7 +139,7 @@ def test_linux_libc_variants_share_binary(wheels, arch):
     for libc in ("manylinux_2_17", "musllinux_1_2"):
         [path] = [path for path in wheels if path.name.endswith(f"-{libc}_{arch}.whl")]
         with zipfile.ZipFile(path) as wheel:
-            binaries.append(wheel.read(f"{STEM}.data/scripts/hello-radler"))
+            binaries.append(wheel.read(f"{STEM}.data/scripts/hello-radlermass"))
     assert binaries[0] == binaries[1]
 
 
@@ -162,7 +162,7 @@ def installed_command(request, tmp_path_factory, native_wheel):
     subprocess.run(
         [*command, "--no-index", "--no-deps", str(native_wheel)], check=True, timeout=60
     )
-    return scripts / ("hello-radler.exe" if os.name == "nt" else "hello-radler")
+    return scripts / ("hello-radlermass.exe" if os.name == "nt" else "hello-radlermass")
 
 
 def test_installed_command(installed_command, native_wheel):
@@ -317,7 +317,7 @@ def test_cli(tmp_path, go_module):
         [
             sys.executable,
             "-m",
-            "radler",
+            "radlermass",
             str(go_module),
             "--package-path",
             "./cmd/hello",
