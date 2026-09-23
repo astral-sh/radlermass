@@ -6,8 +6,8 @@
 
 Go binaries in Python wheels.
 
-Inspired by [go-to-wheel](https://github.com/simonw/go-to-wheel). The wheels
-install native executables, with no Python wrapper.
+Partially derived from Simon Willison's [go-to-wheel](https://github.com/simonw/go-to-wheel).
+The wheels install native executables, with no Python wrapper.
 
 Requires Python 3.14+ and Go. Cgo is not supported.
 
@@ -51,13 +51,16 @@ See the [contributing guide](CONTRIBUTING.md) for development and release instru
 
 ## License
 
-radlermass is licensed under either of
+Original radlermass code and modifications are licensed under either of
 
 - Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
   <https://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
 at your option.
+
+Code derived from go-to-wheel remains licensed under Apache-2.0. See
+[NOTICE](NOTICE) for attribution and modification details.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
 radlermass by you, as defined in the Apache-2.0 license, shall be dually licensed as above, without any

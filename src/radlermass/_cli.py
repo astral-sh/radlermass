@@ -1,3 +1,6 @@
+# Portions derived from go-to-wheel by Simon Willison (Apache-2.0).
+# Modified by Astral Software Inc. for radlermass; see NOTICE.
+
 """Command-line interface for radlermass."""
 
 import argparse
