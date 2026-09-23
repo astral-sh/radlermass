@@ -7,13 +7,8 @@
 Go binaries in Python wheels.
 
 Partially derived from Simon Willison's [go-to-wheel](https://github.com/simonw/go-to-wheel).
-The wheels install native executables, with no Python wrapper.
 
 Requires Python 3.14+ and Go. Cgo is not supported.
-
-radlermass is backed by [Astral](https://astral.sh), the creators of
-[uv](https://github.com/astral-sh/uv), [Ruff](https://github.com/astral-sh/ruff),
-and [ty](https://github.com/astral-sh/ty).
 
 ## Usage
 
@@ -22,15 +17,13 @@ $ uv tool install radlermass
 $ radlermass ./mytool --version 1.2.3
 ```
 
-This builds the root `main` package for Linux, macOS, and Windows (amd64 and
-arm64), writing wheels to `./dist`.
+This builds the root `main` package for Linux, macOS, and Windows on amd64 and
+arm64. Wheels are written to `./dist`.
 
-Use `--package-path cmd/mytool` for a subdirectory. See `uv run radlermass --help`
-for names, target selection, metadata, and linker flags.
+Use `--package-path cmd/mytool` to build a subdirectory. Run `radlermass --help`
+for all options.
 
-Each wheel includes `go.mod.json` under `.dist-info/sboms/`, generated from the
-module's `go.mod` with `go mod edit -json`. Use `--no-embed-gomod-json` to omit it.
-If JSON generation fails, no wheels are published.
+Wheels include `go.mod.json` by default. Use `--no-embed-gomod-json` to omit it.
 
 ## Python API
 
@@ -41,13 +34,10 @@ wheels = build_wheels(
     "./mytool",
     package_path="cmd/mytool",
     version="1.2.3",
-    readme="# My tool\n\nA Go command.",
 )
 ```
 
-`build_wheels` returns a list of absolute wheel paths. `readme` accepts Markdown
-as a `str` or a file as a `pathlib.Path`; relative paths resolve against the Go
-module. Set `embed_gomod_json=False` to omit `go.mod.json`.
+Set `embed_gomod_json=False` to omit `go.mod.json`.
 
 ## Contributing
 
