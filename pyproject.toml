@@ -1,6 +1,6 @@
 [project]
 name = "radlermass"
-version = "0.2.0"
+version = "0.3.0"
 description = "Go binaries in Python wheels."
 readme = "README.md"
 # Includes Apache-2.0 code derived from go-to-wheel; see NOTICE.
