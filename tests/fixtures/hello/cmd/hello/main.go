@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	greeting "example.com/radler-test"
+	greeting "example.com/radlermass-test"
 )
 
 var version = "dev"

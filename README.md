@@ -1,4 +1,4 @@
-# radler
+# radlermass
 
 Go binaries in Python wheels.
 
@@ -12,19 +12,19 @@ Requires Python 3.14+ and Go. Cgo is not supported.
 From a checkout:
 
 ```console
-$ uv run radler ./mytool --version 1.2.3
+$ uv run radlermass ./mytool --version 1.2.3
 ```
 
 This builds the root `main` package for Linux, macOS, and Windows (amd64 and
 arm64), writing wheels to `./dist`.
 
-Use `--package-path cmd/mytool` for a subdirectory. See `uv run radler --help`
+Use `--package-path cmd/mytool` for a subdirectory. See `uv run radlermass --help`
 for names, target selection, metadata, and linker flags.
 
 ## Python API
 
 ```python
-from radler import build_wheels
+from radlermass import build_wheels
 
 wheels = build_wheels(
     "./mytool",

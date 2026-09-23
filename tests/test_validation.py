@@ -1,7 +1,7 @@
 import pytest
 
-from radler import build_wheels
-from radler._cli import main
+from radlermass import build_wheels
+from radlermass._cli import main
 
 
 @pytest.mark.parametrize(
@@ -24,7 +24,7 @@ from radler._cli import main
         ),
         ("build_timeout", 0, "positive, finite"),
         ("build_timeout", float("nan"), "positive, finite"),
-        ("go_binary", "radler-no-such-go", "Go executable not found"),
+        ("go_binary", "radlermass-no-such-go", "Go executable not found"),
     ],
 )
 def test_invalid_options(tmp_path, go_module, option, value, message):

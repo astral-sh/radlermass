@@ -8,10 +8,10 @@ from pathlib import Path
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
-from radler._go import Go
-from radler._metadata import Metadata, validate_command
-from radler._platforms import macos_tag, select_targets
-from radler._wheel import wheel_timestamp, write_wheel
+from radlermass._go import Go
+from radlermass._metadata import Metadata, validate_command
+from radlermass._platforms import macos_tag, select_targets
+from radlermass._wheel import wheel_timestamp, write_wheel
 
 
 def _resolve_package(go_dir: str | Path, package_path: str) -> tuple[Path, str]:
@@ -130,7 +130,7 @@ def build_wheels(
     output.mkdir(parents=True, exist_ok=True)
 
     # Keep staged wheels on the output filesystem so each rename is atomic.
-    with tempfile.TemporaryDirectory(prefix=".radler-", dir=output) as temporary:
+    with tempfile.TemporaryDirectory(prefix=".radlermass-", dir=output) as temporary:
         staging = Path(temporary)
         binaries = go.build(package, targets, staging, flags)
 
