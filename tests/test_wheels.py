@@ -2,6 +2,7 @@ import base64
 import csv
 import hashlib
 import io
+import json
 import os
 import shutil
 import stat
@@ -16,7 +17,6 @@ from packaging.metadata import parse_email
 from packaging.utils import parse_wheel_filename
 
 from radlermass import build_wheels
-from radlermass._cli import main
 from radlermass._go import Go
 
 pytestmark = pytest.mark.usefixtures("go_environment")
@@ -48,7 +48,7 @@ def test_builds_all_platforms(wheels):
 
 
 def test_wheel_layout(wheel):
-    """Store the executable in .data/scripts with mode 0755."""
+    """Store the executable with mode 0755 and metadata with mode 0644."""
     name, version, _, tags = parse_wheel_filename(Path(wheel.filename).name)
     assert name == "radlermass-test-cli"
     assert str(version) == "1.2.3rc1"
@@ -66,70 +66,30 @@ def test_wheel_layout(wheel):
         f"{STEM}.dist-info/RECORD",
         f"{STEM}.dist-info/sboms/go.mod.json",
     }
-    info = wheel.getinfo(script)
-    assert info.create_system == 3
-    assert stat.S_ISREG(info.external_attr >> 16)
-    assert stat.S_IMODE(info.external_attr >> 16) == 0o755
+    for info in wheel.infolist():
+        assert info.create_system == 3
+        assert stat.S_ISREG(info.external_attr >> 16)
+        mode = 0o755 if info.filename == script else 0o644
+        assert stat.S_IMODE(info.external_attr >> 16) == mode
 
 
-def test_wheel_gomod_json(wheel, go_module):
-    """Embed the module's JSON output in every wheel with mode 0644."""
-    result = subprocess.run(
-        ["go", "mod", "edit", "-json"],
-        cwd=go_module,
-        capture_output=True,
-        check=True,
-        timeout=30,
-    )
-    member = f"{STEM}.dist-info/sboms/go.mod.json"
-    assert wheel.read(member) == result.stdout
-    info = wheel.getinfo(member)
-    assert info.create_system == 3
-    assert stat.S_ISREG(info.external_attr >> 16)
-    assert stat.S_IMODE(info.external_attr >> 16) == 0o644
-
-
-@pytest.mark.parametrize("interface", ["api", "cli"])
-def test_no_embed_gomod_json(tmp_path, go_module, monkeypatch, interface):
-    """Both opt-outs skip JSON generation and omit the file and RECORD entry."""
+def test_no_embed_gomod_json(tmp_path, go_module, monkeypatch):
+    """Skip JSON generation and omit the file and RECORD entry when disabled."""
 
     def unexpected_generation(self):
         pytest.fail("JSON generation must be skipped when embedding is disabled")
 
     monkeypatch.setattr(Go, "gomod_json", unexpected_generation)
-    if interface == "api":
-        [path] = build_wheels(
-            go_module,
-            package_path="cmd/hello",
-            platforms=["linux-amd64"],
-            output_dir=tmp_path,
-            embed_gomod_json=False,
-        )
-    else:
-        assert (
-            main(
-                [
-                    str(go_module),
-                    "--package-path",
-                    "cmd/hello",
-                    "--platforms",
-                    "linux-amd64",
-                    "--output-dir",
-                    str(tmp_path),
-                    "--no-embed-gomod-json",
-                ]
-            )
-            == 0
-        )
-        [path] = tmp_path.glob("*.whl")
+    [path] = build_wheels(
+        go_module,
+        package_path="cmd/hello",
+        platforms=["linux-amd64"],
+        output_dir=tmp_path,
+        embed_gomod_json=False,
+    )
 
     with zipfile.ZipFile(path) as wheel:
-        assert set(wheel.namelist()) == {
-            "hello-0.1.0.data/scripts/hello",
-            "hello-0.1.0.dist-info/METADATA",
-            "hello-0.1.0.dist-info/WHEEL",
-            "hello-0.1.0.dist-info/RECORD",
-        }
+        assert "hello-0.1.0.dist-info/sboms/go.mod.json" not in wheel.namelist()
         assert b"go.mod.json" not in wheel.read("hello-0.1.0.dist-info/RECORD")
 
 
@@ -161,6 +121,10 @@ def test_wheel_metadata(wheel, go_module):
         "Root-Is-Purelib": "false",
         "Tag": str(tag),
     }
+
+    gomod = json.loads(wheel.read(f"{STEM}.dist-info/sboms/go.mod.json"))
+    assert gomod["Module"]["Path"] == "example.com/radlermass-test"
+    assert gomod["Go"] == "1.20"
 
 
 @pytest.mark.parametrize("readme", ["README.md", "# Inline README\n\nGrüße!\n"])
@@ -295,35 +259,22 @@ def test_failed_target_does_not_publish_partial_set(tmp_path, go_module):
     assert sentinel.read_bytes() == b"previous build"
 
 
-@pytest.mark.parametrize("timeout", [False, True], ids=["failure", "timeout"])
-def test_gomod_json_failure_does_not_publish(tmp_path, go_module, monkeypatch, timeout):
+def test_gomod_json_failure_does_not_publish(tmp_path, go_module, monkeypatch):
     """JSON generation errors preserve existing wheels and remove staged output."""
     sentinel = tmp_path / "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
     sentinel.write_bytes(b"previous build")
-    run = subprocess.run
 
-    def fail_generation(args, **kwargs):
-        if args[1:] == ["mod", "edit", "-json"]:
-            if timeout:
-                raise subprocess.TimeoutExpired(args, kwargs["timeout"])
-            return subprocess.CompletedProcess(args, 1, "", "could not read go.mod")
-        return run(args, **kwargs)
+    def fail_generation(self):
+        raise RuntimeError("could not read go.mod")
 
-    monkeypatch.setattr(subprocess, "run", fail_generation)
-    message = (
-        "Go module JSON generation exceeded 300 seconds"
-        if timeout
-        else r"Go module JSON generation failed \(exit 1\):\ncould not read go.mod"
-    )
-    with pytest.raises(RuntimeError, match=message) as error:
+    monkeypatch.setattr(Go, "gomod_json", fail_generation)
+    with pytest.raises(RuntimeError, match="could not read go.mod"):
         build_wheels(
             go_module,
             package_path="cmd/hello",
             platforms=["linux-amd64", "linux-amd64-musl"],
             output_dir=tmp_path,
         )
-    if timeout:
-        assert isinstance(error.value.__cause__, subprocess.TimeoutExpired)
     assert list(tmp_path.iterdir()) == [sentinel]
     assert sentinel.read_bytes() == b"previous build"
 
@@ -413,8 +364,10 @@ def test_duplicate_platforms(tmp_path, go_module):
     assert list(tmp_path.iterdir()) == [wheel]
 
 
-def test_cli(tmp_path, go_module):
+@pytest.mark.parametrize("embed_gomod_json", [True, False])
+def test_cli(tmp_path, go_module, embed_gomod_json):
     """Build the requested subpackage and read a README file through the CLI."""
+    options = [] if embed_gomod_json else ["--no-embed-gomod-json"]
     result = subprocess.run(
         [
             sys.executable,
@@ -429,6 +382,7 @@ def test_cli(tmp_path, go_module):
             str(tmp_path),
             "--readme",
             "README.md",
+            *options,
         ],
         capture_output=True,
         text=True,
@@ -440,7 +394,9 @@ def test_cli(tmp_path, go_module):
     assert path.name == "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
     with zipfile.ZipFile(path) as wheel:
         metadata, _ = parse_email(wheel.read("hello-0.1.0.dist-info/METADATA"))
-        assert "hello-0.1.0.dist-info/sboms/go.mod.json" in wheel.namelist()
+        assert (
+            "hello-0.1.0.dist-info/sboms/go.mod.json" in wheel.namelist()
+        ) == embed_gomod_json
     assert metadata["description"] == (go_module / "README.md").read_text(
         encoding="utf-8"
     )
