@@ -76,6 +76,7 @@ def build_wheels(
     ldflags: str | None = None,
     set_version_var: str | None = None,
     build_timeout: float = 300,
+    embed_gomod_json: bool = True,
 ) -> list[Path]:
     """Build wheels from ``go_dir`` and return their absolute paths.
 
@@ -83,6 +84,8 @@ def build_wheels(
     ``readme`` is Markdown text or a Path to a UTF-8 file. Relative README paths
     use ``go_dir``; relative ``output_dir`` paths use the working directory.
     ``description=None`` omits the package summary.
+    ``embed_gomod_json`` embeds the module's ``go.mod`` as JSON under
+    ``.dist-info/sboms/go.mod.json`` by default. Set it to False to omit the file.
 
     Raises ValueError for invalid inputs, RuntimeError for Go failures or
     timeouts, and OSError for I/O or process errors.
@@ -136,6 +139,7 @@ def build_wheels(
     with tempfile.TemporaryDirectory(prefix=".radlermass-", dir=output) as temporary:
         staging = Path(temporary)
         binaries = go.build(package, targets, staging, flags)
+        gomod_json = go.gomod_json() if embed_gomod_json else None
 
         wheels = []
         for target, tag in wheel_tags.items():
@@ -146,6 +150,7 @@ def build_wheels(
                 command=command,
                 tag=tag,
                 timestamp=timestamp,
+                gomod_json=gomod_json,
             )
             wheels.append(wheel)
 

@@ -42,6 +42,7 @@ class Go:
                 env=env,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=self.timeout,
             )
         except subprocess.TimeoutExpired as error:
@@ -57,6 +58,12 @@ class Go:
     def version(self) -> str:
         """Return the toolchain version selected for this module."""
         return self._run(["env", "GOVERSION"], label="Go version query").strip()
+
+    def gomod_json(self) -> bytes:
+        """Return the module's go.mod as UTF-8 JSON without modifying it."""
+        return self._run(
+            ["mod", "edit", "-json"], label="Go module JSON generation"
+        ).encode("utf-8")
 
     def build(
         self,

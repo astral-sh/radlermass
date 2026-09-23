@@ -38,6 +38,7 @@ def write_wheel(
     command: str,
     tag: str,
     timestamp: tuple[int, int, int, int, int, int],
+    gomod_json: bytes | None = None,
 ) -> Path:
     if tag.startswith("win_") and not command.lower().endswith(".exe"):
         command += ".exe"
@@ -82,6 +83,9 @@ def write_wheel(
             f"Tag: {wheel_tag}\n"
         )
         add(f"{dist_info}/WHEEL", io.BytesIO(wheel_metadata.encode("ascii")), 0o644)
+
+        if gomod_json is not None:
+            add(f"{dist_info}/sboms/go.mod.json", io.BytesIO(gomod_json), 0o644)
 
         record = f"{dist_info}/RECORD"
         rows.append((record, "", ""))

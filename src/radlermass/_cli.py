@@ -43,6 +43,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser.add_argument("--go-binary", default="go", help="Go executable path or name")
 
+    parser.add_argument(
+        "--no-embed-gomod-json",
+        dest="embed_gomod_json",
+        action="store_false",
+        help="Omit go.mod.json from the wheel's .dist-info/sboms directory",
+    )
+
     parser.add_argument("--description", help="Package summary")
     parser.add_argument("--author", help="Package author")
     parser.add_argument("--author-email", help="Package author email")
@@ -61,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--build-timeout",
         type=float,
         default=300,
-        help="Seconds allowed per Go build (default: 300)",
+        help="Seconds allowed per Go invocation (default: 300)",
     )
 
     args = parser.parse_args(argv)
