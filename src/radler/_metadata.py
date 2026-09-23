@@ -44,11 +44,14 @@ class Metadata:
             if self.readme is not None
             else None,
         }
+
         message = RFC822Message()
         for key, value in headers.items():
             if value is not None:
                 if any(ord(char) < 32 or ord(char) == 127 for char in value):
                     raise ValueError(f"{key} must not contain control characters")
+
                 message[key] = value
+
         message.set_payload(self.readme or "")
         return message.as_bytes()

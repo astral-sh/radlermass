@@ -15,6 +15,7 @@ class Go:
     def __init__(self, module: Path, executable: str, timeout: float) -> None:
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("Build timeout must be a positive, finite number")
+
         path = shutil.which(executable)
         if path is None:
             raise ValueError(f"Go executable not found: {executable!r}")
@@ -42,9 +43,11 @@ class Go:
             )
         except subprocess.TimeoutExpired as error:
             raise RuntimeError(f"{label} exceeded {self.timeout:g} seconds") from error
+
         if result.returncode:
             detail = result.stderr.strip() or result.stdout.strip()
             raise RuntimeError(f"{label} failed (exit {result.returncode}):\n{detail}")
+
         return result.stdout
 
     @cached_property
@@ -75,6 +78,7 @@ class Go:
                 "GOAMD64": "v1",
                 "GOARM64": "v8.0",
             }
+
             self._run(
                 [
                     "build",
@@ -89,4 +93,5 @@ class Go:
                 label=f"Go build for {target.goos}/{target.goarch}",
             )
             binaries[key] = binary
+
         return binaries

@@ -31,9 +31,11 @@ def select_targets(platforms: Sequence[str] | None) -> list[Target]:
     selected = list(dict.fromkeys(TARGETS if platforms is None else platforms))
     if not selected:
         raise ValueError("Select at least one platform")
+
     unknown = [platform for platform in selected if platform not in TARGETS]
     if unknown:
         raise ValueError(f"Unknown platform(s): {', '.join(unknown)}")
+
     return [TARGETS[platform] for platform in selected]
 
 
@@ -65,6 +67,8 @@ def macos_tag(go_version: str, arch: str) -> str:
             f"Unknown macOS minimum for Go version {go_version!r}; "
             "update radler's Go version map"
         ) from None
+
     if arch == "arm64":
         minimum = max(minimum, (11, 0))
+
     return next(mac_platforms(version=minimum, arch=arch))
