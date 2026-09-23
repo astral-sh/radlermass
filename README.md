@@ -28,6 +28,10 @@ arm64), writing wheels to `./dist`.
 Use `--package-path cmd/mytool` for a subdirectory. See `uv run radlermass --help`
 for names, target selection, metadata, and linker flags.
 
+Each wheel includes `go.mod.json` under `.dist-info/sboms/`, generated from the
+module's `go.mod` with `go mod edit -json`. Use `--no-embed-gomod-json` to omit it.
+If JSON generation fails, no wheels are published.
+
 ## Python API
 
 ```python
@@ -43,7 +47,7 @@ wheels = build_wheels(
 
 `build_wheels` returns a list of absolute wheel paths. `readme` accepts Markdown
 as a `str` or a file as a `pathlib.Path`; relative paths resolve against the Go
-module.
+module. Set `embed_gomod_json=False` to omit `go.mod.json`.
 
 ## Contributing
 
