@@ -28,6 +28,33 @@ dev = [
     "ty",
 ]
 
+[tool.uv]
+require-build-hashes = true
+preview-features = ["build-dependency-hashes"]
+build-constraint-dependencies = [
+    { requirement = "uv-build==0.12.24", hashes = [
+        "sha256:1ebc07df37b42e5ed5fd92a63587fa3016542e291de4616142d4fa30672b3138",
+        "sha256:34f864bc3ed1d8bc5edf5534bdbe20eb64ab87209f28cc006d47b008f1db61cd",
+        "sha256:3bc12e07ed6a4b666b52562b3f7143a5f2f29e6ceab9854a6667a9b5641d17c7",
+        "sha256:4bab3f4cdc18d54d78f39796f917caf85d744a00e9add2382593eeb7b63bc0e0",
+        "sha256:56d5126bac50152c0151b3f87ff6bdc45bcd09c6f0835a95cc128299df276333",
+        "sha256:57025a08ad963c5f3f0a573d848a39b6adf9d6095b47b87abbad68af07e9699e",
+        "sha256:5ab63c311306b61a2d9c0ecea6a991e42891381dc34dc7e383c6ccf8bb94be07",
+        "sha256:6be0615b531ab35894b726456e85013b8e088cc24867211c8634699a907f5da2",
+        "sha256:7638732c0f6bba83493f6586d1b82ae7a5638e78a5b2f7db24701aaea9b77e08",
+        "sha256:7a0f45941530c468e9b354e6f0f8e83668b6960a331bf3c311d7232ac33888ea",
+        "sha256:7f67b18a83af209b66b1ec3d6ed565406dab2ebfee7bbe3598b541e7d39a5e5a",
+        "sha256:828cfad86564ebdebb3407dde74f4ac9ac1a8b05f7708ed4067bf4c6adff512c",
+        "sha256:901ce6413991048f77d6d6e1dd03669121af0e1c95260d9e39ab07ea30b9a3ea",
+        "sha256:a2b21c7e80ae89e460706765ed80136ea65bbbb3e70308c34c13ecafd63df9a6",
+        "sha256:c2a73a769e31150ee74b445f57b5984307293754884c0d1842e61484a4f3b8e0",
+        "sha256:cbfd657293cb455d8684d0dea5707961e0a7a5da074650389841b2b17cbc5114",
+        "sha256:d5c3bb2c598e094f20f96d36e736de43e73776b104fe96b5697ab313c3b5766d",
+        "sha256:d819b519cc6a6f9dc41cf680f49940221fd3261bd547e927c3dc788ba0ac143e",
+        "sha256:fa4f087d67b6621501264934ee450db845a84eda2f7f0b7d0a14a7cee38d6dc9",
+    ] },
+]
+
 [tool.uv.workspace]
 members = []
 
