@@ -5,7 +5,7 @@
 
 import re
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from packaging.utils import canonicalize_name
@@ -77,6 +77,7 @@ def build_wheels(
     set_version_var: str | None = None,
     build_timeout: float = 300,
     embed_gomod_json: bool = True,
+    extra_dist_info_files: Callable[[Path], Mapping[str, bytes]] | None = None,
 ) -> list[Path]:
     """Build wheels from ``go_dir`` and return their absolute paths.
 
@@ -86,6 +87,9 @@ def build_wheels(
     ``description=None`` omits the package summary.
     ``embed_gomod_json`` embeds the module's ``go.mod`` as JSON under
     ``.dist-info/sboms/go.mod.json`` by default. Set it to False to omit the file.
+    ``extra_dist_info_files`` receives each target's compiled binary path before
+    its wheel is written. Return a mapping from relative POSIX file paths under
+    ``.dist-info/`` to their contents, or an empty mapping to add no files.
 
     Raises ValueError for invalid inputs, RuntimeError for Go failures or
     timeouts, and OSError for I/O or process errors.
@@ -143,14 +147,21 @@ def build_wheels(
 
         wheels = []
         for target, tag in wheel_tags.items():
+            binary = binaries[target.goos, target.goarch]
+            extra_files = (
+                extra_dist_info_files(binary)
+                if extra_dist_info_files is not None
+                else None
+            )
             wheel = write_wheel(
-                binary=binaries[target.goos, target.goarch],
+                binary=binary,
                 output_dir=staging,
                 metadata=metadata,
                 command=command,
                 tag=tag,
                 timestamp=timestamp,
                 gomod_json=gomod_json,
+                extra_dist_info_files=extra_files,
             )
             wheels.append(wheel)
 

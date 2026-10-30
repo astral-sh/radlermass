@@ -11,7 +11,8 @@ import os
 import stat
 import time
 import zipfile
-from pathlib import Path
+from collections.abc import Iterator, Mapping
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO
 
 from packaging.tags import Tag
@@ -31,6 +32,38 @@ def wheel_timestamp() -> tuple[int, int, int, int, int, int]:
     return time.gmtime(max(epoch, 315532800))[:6]
 
 
+def _extra_members(
+    dist_info: str, files: Mapping[str, bytes], existing: list[str]
+) -> Iterator[tuple[str, bytes]]:
+    members = {PurePosixPath(name) for name in existing}
+    directories = {parent for member in members for parent in member.parents}
+
+    for name in sorted(files):
+        if (
+            "\\" in name
+            or any(ord(char) < 32 or ord(char) == 127 for char in name)
+            or any(
+                part in ("", ".", "..") or PureWindowsPath(part).drive
+                for part in name.split("/")
+            )
+        ):
+            raise ValueError(f"Invalid .dist-info file path: {name!r}")
+
+        member = PurePosixPath(dist_info, name)
+        if (
+            member in members
+            or member in directories
+            or not members.isdisjoint(member.parents)
+        ):
+            raise ValueError(
+                f".dist-info file path collides with a wheel member: {name!r}"
+            )
+
+        members.add(member)
+        directories.update(member.parents)
+        yield member.as_posix(), files[name]
+
+
 def write_wheel(
     binary: Path,
     output_dir: Path,
@@ -39,6 +72,7 @@ def write_wheel(
     tag: str,
     timestamp: tuple[int, int, int, int, int, int],
     gomod_json: bytes | None = None,
+    extra_dist_info_files: Mapping[str, bytes] | None = None,
 ) -> Path:
     if tag.startswith("win_") and not command.lower().endswith(".exe"):
         command += ".exe"
@@ -88,6 +122,12 @@ def write_wheel(
             add(f"{dist_info}/sboms/go.mod.json", io.BytesIO(gomod_json), 0o644)
 
         record = f"{dist_info}/RECORD"
+        if extra_dist_info_files is not None:
+            for member, data in _extra_members(
+                dist_info, extra_dist_info_files, [*wheel.namelist(), record]
+            ):
+                add(member, io.BytesIO(data), 0o644)
+
         rows.append((record, "", ""))
 
         contents = io.StringIO(newline="")

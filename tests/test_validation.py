@@ -1,7 +1,10 @@
 import pytest
+from packaging.version import Version
 
 from radlermass import build_wheels
 from radlermass._cli import main
+from radlermass._metadata import Metadata
+from radlermass._wheel import write_wheel
 
 
 @pytest.mark.parametrize(
@@ -48,6 +51,44 @@ def test_missing_module(tmp_path):
     """Require a go.mod file in the module directory."""
     with pytest.raises(ValueError, match="no go.mod"):
         build_wheels(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "/absolute",
+        "C:/absolute",
+        "../outside",
+        "sboms/../outside",
+        "sboms\\outside",
+        "sboms/./manifest",
+        "sboms//manifest",
+        "sboms/",
+        "RECORD\x00suffix",
+        "METADATA",
+        "WHEEL",
+        "RECORD",
+        "sboms/go.mod.json",
+        "RECORD/sub",
+        "sboms",
+    ],
+)
+def test_invalid_extra_dist_info_path(tmp_path, name):
+    """Reject unsafe paths and collisions with files or directories in the wheel."""
+    binary = tmp_path / "hello"
+    binary.touch()
+    with pytest.raises(ValueError, match=r"\.dist-info file path"):
+        write_wheel(
+            binary=binary,
+            output_dir=tmp_path,
+            metadata=Metadata("hello", Version("1")),
+            command="hello",
+            tag="manylinux_2_17_x86_64",
+            timestamp=(1980, 1, 1, 0, 0, 0),
+            gomod_json=b"{}",
+            extra_dist_info_files={name: b"extra"},
+        )
 
 
 def test_cli_reports_errors(tmp_path, go_module, capsys):

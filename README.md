@@ -39,6 +39,31 @@ wheels = build_wheels(
 
 Set `embed_gomod_json=False` to omit `go.mod.json`.
 
+To include a manifest from each executable, pass an `extra_dist_info_files`
+callback. It receives the compiled binary path once per target, before the wheel
+is written.
+
+```python
+import subprocess
+from pathlib import Path
+
+from radlermass import build_wheels
+
+
+def go_buildinfo(binary: Path) -> dict[str, bytes]:
+    manifest_bytes = subprocess.check_output(["go", "version", "-m", "-json", binary])
+    return {"sboms/go-buildinfo.json": manifest_bytes}
+
+
+wheels = build_wheels(
+    "./mytool", package_path="cmd/mytool", extra_dist_info_files=go_buildinfo
+)
+```
+
+Use relative POSIX paths under `.dist-info/` that do not conflict with other
+wheel members. Return an empty mapping to add no files for a target. If the
+callback raises, existing destination wheels stay in place.
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) for development and release instructions.

@@ -11,6 +11,7 @@ import sys
 import zipfile
 from email.parser import Parser
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from packaging.metadata import parse_email
@@ -146,7 +147,11 @@ def test_inline_readme(tmp_path, go_module, readme):
 
 def test_wheel_record(wheel):
     """Record member hashes and sizes, leaving RECORD's own fields empty."""
-    record = f"{STEM}.dist-info/RECORD"
+    assert_wheel_record(wheel, f"{STEM}.dist-info")
+
+
+def assert_wheel_record(wheel, dist_info):
+    record = f"{dist_info}/RECORD"
     rows = list(csv.reader(io.StringIO(wheel.read(record).decode("utf-8"))))
     assert len(rows) == len(wheel.namelist())
     records = {member: (digest, size) for member, digest, size in rows}
@@ -158,6 +163,35 @@ def test_wheel_record(wheel):
         expected = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=")
         assert size == str(len(data)), member
         assert digest == "sha256=" + expected.decode("ascii"), member
+
+
+def test_extra_dist_info_files(tmp_path, go_module, monkeypatch):
+    """Embed the executable's Go build info for each target."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+
+    def manifest(binary: Path) -> dict[str, bytes]:
+        assert binary.is_file()
+        info = subprocess.check_output(["go", "version", "-m", binary], timeout=30)
+        return {"sboms/go-buildinfo.txt": info}
+
+    callback = Mock(wraps=manifest)
+    wheels = build_wheels(
+        go_module,
+        package_path="cmd/hello",
+        platforms=["linux-amd64", "linux-arm64"],
+        output_dir=tmp_path,
+        extra_dist_info_files=callback,
+    )
+
+    assert callback.call_count == 2
+    dist_info = "hello-0.1.0.dist-info"
+    for path, arch in zip(wheels, ("amd64", "arm64"), strict=True):
+        with zipfile.ZipFile(path) as wheel:
+            info = wheel.getinfo(f"{dist_info}/sboms/go-buildinfo.txt")
+            assert f"\tbuild\tGOARCH={arch}".encode() in wheel.read(info).splitlines()
+            assert info.date_time == (2023, 11, 14, 22, 13, 20)
+            assert info.external_attr >> 16 == stat.S_IFREG | 0o644
+            assert_wheel_record(wheel, dist_info)
 
 
 @pytest.mark.parametrize("arch", ["x86_64", "aarch64"])
@@ -210,7 +244,7 @@ def test_installed_command(installed_command, native_wheel):
 
 
 def test_root_package_is_reproducible(tmp_path, monkeypatch):
-    """Honor SOURCE_DATE_EPOCH and produce identical wheels on repeated builds."""
+    """Honor SOURCE_DATE_EPOCH and produce an identical wheel for an empty mapping."""
     module = tmp_path / "root-command"
     module.mkdir()
     gomod = "// Deprecated: Grüße!\nmodule example.com/root\n\ngo 1.20\n"
@@ -221,7 +255,10 @@ def test_root_package_is_reproducible(tmp_path, monkeypatch):
         module, platforms=["linux-amd64"], output_dir=tmp_path / "one"
     )
     [second] = build_wheels(
-        module, platforms=["linux-amd64"], output_dir=tmp_path / "two"
+        module,
+        platforms=["linux-amd64"],
+        output_dir=tmp_path / "two",
+        extra_dist_info_files=lambda _: {},
     )
     assert first.read_bytes() == second.read_bytes()
     assert (module / "go.mod").read_text(encoding="utf-8") == gomod
@@ -242,41 +279,50 @@ def test_library_package_fails(tmp_path, go_module):
     assert not list(tmp_path.iterdir())
 
 
+def assert_build_failure_preserves_output(go_module, output_dir, *, match, **options):
+    sentinel = output_dir / "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
+    sentinel.write_bytes(b"previous build")
+    with pytest.raises(RuntimeError, match=match):
+        build_wheels(go_module, output_dir=output_dir, **options)
+    assert list(output_dir.iterdir()) == [sentinel]
+    assert sentinel.read_bytes() == b"previous build"
+
+
 def test_failed_target_does_not_publish_partial_set(tmp_path, go_module):
     """An amd64-only command must fail on arm64 without replacing existing wheels."""
-    sentinel = tmp_path / "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
-    sentinel.write_bytes(b"previous build")
-
-    with pytest.raises(RuntimeError, match="Go build for linux/arm64 failed"):
-        build_wheels(
-            go_module,
-            name="hello",
-            package_path="cmd/amd64-only",
-            platforms=["linux-amd64", "linux-arm64"],
-            output_dir=tmp_path,
-        )
-    assert list(tmp_path.iterdir()) == [sentinel]
-    assert sentinel.read_bytes() == b"previous build"
+    assert_build_failure_preserves_output(
+        go_module,
+        tmp_path,
+        match="Go build for linux/arm64 failed",
+        package_path="cmd/amd64-only",
+        platforms=["linux-amd64", "linux-arm64"],
+    )
 
 
 def test_gomod_json_failure_does_not_publish(tmp_path, go_module, monkeypatch):
     """JSON generation errors preserve existing wheels and remove staged output."""
-    sentinel = tmp_path / "hello-0.1.0-py3-none-manylinux_2_17_x86_64.whl"
-    sentinel.write_bytes(b"previous build")
+    error = RuntimeError("could not read go.mod")
+    monkeypatch.setattr(Go, "gomod_json", Mock(side_effect=error))
+    assert_build_failure_preserves_output(
+        go_module,
+        tmp_path,
+        match=str(error),
+        package_path="cmd/hello",
+        platforms=["linux-amd64", "linux-amd64-musl"],
+    )
 
-    def fail_generation(self):
-        raise RuntimeError("could not read go.mod")
 
-    monkeypatch.setattr(Go, "gomod_json", fail_generation)
-    with pytest.raises(RuntimeError, match="could not read go.mod"):
-        build_wheels(
-            go_module,
-            package_path="cmd/hello",
-            platforms=["linux-amd64", "linux-amd64-musl"],
-            output_dir=tmp_path,
-        )
-    assert list(tmp_path.iterdir()) == [sentinel]
-    assert sentinel.read_bytes() == b"previous build"
+def test_extra_dist_info_callback_failure_does_not_publish(tmp_path, go_module):
+    """Call the callback for both libc targets, even though they share a binary."""
+    error = RuntimeError("could not read build info")
+    assert_build_failure_preserves_output(
+        go_module,
+        tmp_path,
+        match=str(error),
+        package_path="cmd/hello",
+        platforms=["linux-amd64", "linux-amd64-musl"],
+        extra_dist_info_files=Mock(side_effect=[{}, error]),
+    )
 
 
 @pytest.mark.parametrize(
